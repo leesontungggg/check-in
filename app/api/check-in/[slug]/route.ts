@@ -23,10 +23,16 @@ const sheetService = async () => {
   return sheets;
 };
 
+type Props = {
+  params: Promise<{
+    slug: string
+  }>
+}
+
 export const fetchCache = "force-no-store";
 export async function GET(
   request: Request,
-  { params }: { params: { slug: string } }
+  { params }: Props
 ) {
   unstable_noStore();
   try {
