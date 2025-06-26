@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
       range: `${SHEET_NAME}!A1:A`,
     });
 
-    const values = [[totalData.data.values?.length - 1, '' , ...Object.values(body)]];
+    const valuesArray = totalData.data.values ?? [];
+    const values = [[valuesArray.length - 1, '', ...Object.values(body)]];
 
     await sheet.spreadsheets.values.append({
       spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${totalData.data.values?.length + 1}`,
+      range: `${SHEET_NAME}!A${(totalData.data.values?.length ?? 0) + 1}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
