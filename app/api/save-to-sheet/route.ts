@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 
-const SHEET_NAME = "Sheet1"; // Change if your sheet name is different
+const SHEET_NAME = "Check In Day 1"; // Change if your sheet name is different
 
 const sheetService = async () => {
   const auth = await new google.auth.GoogleAuth({
@@ -27,11 +27,16 @@ export async function POST(req: NextRequest) {
 
     const sheet = await sheetService();
 
-    const values = [Object.values(body)];
+    const totalData = await sheet.spreadsheets.values.get({
+      spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A1:A`,
+    });
+
+    const values = [[totalData.data.values?.length - 1, '' , ...Object.values(body)]];
 
     await sheet.spreadsheets.values.append({
       spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A1`,
+      range: `${SHEET_NAME}!A${totalData.data.values?.length + 1}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
