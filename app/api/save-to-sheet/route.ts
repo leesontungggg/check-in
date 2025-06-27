@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 
-const SHEET_NAME = "Check In Day 1"; // Change if your sheet name is different
+const SHEET_NAME = "Check In Day 2"; // Change if your sheet name is different
 
 const sheetService = async () => {
   const auth = await new google.auth.GoogleAuth({
