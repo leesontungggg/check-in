@@ -6,36 +6,44 @@ import { useState } from "react";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
+  const [resultMessage, setResultMessage] = useState("");
   // const [permissionsGranted, setPermissionsGranted] = useState(false);
 
-  const handleScanQRCode = (qrCode: any) => {
+  const handleScanQRCode = async (qrCode: any) => {
     setIsLoading(true);
+    setResultMessage("");
 
-    const code = String(qrCode).split("/")[4].split(",")[0];
+    // const code = String(qrCode).split("/")[4].split(",")[0];
 
-    fetch(`/api/check-in/${code}`, {
-      method: "GET",
-    }).then(() => {
+    console.log("Scanned QR Code:", qrCode);
+
+    try {
+      const response = await fetch(`/api/check-in/${qrCode}`, {
+        method: "GET",
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success) {
+        const firstName = data?.rowData?.[2] ?? "";
+        const lastName = data?.rowData?.[3] ?? "";
+        const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+        setResultMessage(
+          fullName
+            ? `${fullName} - Bạn đã check in thành công`
+            : "Bạn đã check in thành công",
+        );
+      } else {
+        setResultMessage("bạn đã check in thất bại");
+      }
+    } catch (error) {
+      console.error("Check-in failed:", error);
+      setResultMessage("bạn đã check in thất bại");
+    } finally {
       setIsLoading(false);
-    });
+    }
   };
-
-  // useEffect(() => {
-  //   const handlePermissions = async () => {
-  //     try {
-  //       const stream = await navigator.mediaDevices.getUserMedia({
-  //         audio: true,
-  //       });
-
-  //       setPermissionsGranted(true);
-  //     } catch (error) {
-  //       console.error("Error getting user media:", error);
-  //       setPermissionsGranted(false);
-  //     }
-  //   };
-
-  //   handlePermissions();
-  // }, []);
 
   return (
     <div className="w-screen h-screen flex items-center justify-center">
@@ -57,6 +65,13 @@ export default function Home() {
           sound={false}
         />
       </div>
+      {resultMessage && (
+        <div className="absolute bottom-10 left-1/2 w-full max-w-md -translate-x-1/2 px-4">
+          <div className="rounded-lg bg-white p-4 text-center text-lg font-semibold shadow-lg">
+            {resultMessage}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

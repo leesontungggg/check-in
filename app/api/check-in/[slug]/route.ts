@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { google } from "googleapis";
 import { unstable_noStore } from "next/cache";
-import puppeteer from "puppeteer";
-import { exec } from "child_process";
-import path from "path";
+import { NextResponse } from "next/server";
+
+const SHEET_NAME = "GuestList";
 
 const sheetService = async () => {
   const auth = await new google.auth.GoogleAuth({
@@ -25,41 +25,32 @@ const sheetService = async () => {
 
 type Props = {
   params: Promise<{
-    slug: string
-  }>
-}
+    slug: string;
+  }>;
+};
 
 export const fetchCache = "force-no-store";
-export async function GET(
-  request: Request,
-  { params }: Props
-) {
+export async function GET(request: Request, { params }: Props) {
   unstable_noStore();
   try {
     const { slug } = await params;
 
-    const pdfPath = path.join("./hello.pdf");
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-
     const sheet = await sheetService();
-
-    console.log("env", process.env.NEXT_PUBLIC_SPREADSHEET_ID);
 
     const currentEventData = await sheet.spreadsheets.values.get({
       spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID,
-      range: `Guest list eo-rise-above-the-new-world-disorder 2025-06-18`,
+      range: SHEET_NAME,
     });
 
-    // Check if the slug exists in the sheet data
-    const isSlugExists = currentEventData.data.values?.some(
-      (row: any[]) => row[6] === slug
-    );
+    console.log("Checking slug:", slug);
 
-    if (!isSlugExists) {
-    }
+    const rows = currentEventData.data.values ?? [];
 
-    // If the slug does not exist, return a 404 response
+    const matchedRowIndex = rows.findIndex((row: any[]) => row[1] === slug);
+    const isSlugExists = matchedRowIndex !== -1;
+
+    console.log("Is slug exists:", isSlugExists);
+
     if (!isSlugExists) {
       return new Response("Not Found", {
         status: 404,
@@ -69,77 +60,42 @@ export async function GET(
         },
       });
     }
-    // Get the row data for the slug
-    const rowData = currentEventData.data.values?.find(
-      (row: any[]) => row[6] === slug
-    );
 
-    // Set page content
-    if (!rowData) {
-      await browser.close();
-      return new Response("Row data not found", {
-        status: 404,
-        headers: {
-          "Content-Type": "text/plain",
-          "Cache-Control": "no-store",
+    const rowNumber = matchedRowIndex + 1;
+    const rowData = rows[matchedRowIndex];
+    const isAlreadyCheckedIn = String(rowData?.[0] ?? "")
+      .trim()
+      .toLowerCase() === "x";
+
+    if (isAlreadyCheckedIn) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "This user already checkin",
+          isSlugExists,
+          rowNumber,
+          rowData,
         },
-      });
+        { status: 400 },
+      );
     }
-    await page.setContent(`
-            <html>
-                <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh; width:100vw;">
-                    <div style="font-size:24px;text-align:center;width:100%;">${
-                      rowData[2]
-                    }<br /><span style="font-size:${
-      String(rowData[1]).length > 50 ? "16" : "20"
-    }px; margin-top: 4px">${rowData[1]}</span></div>
-                </body>
-            </html>
-        `);
 
-    // Generate PDF with 7cm x 10cm size
-    const pdfBuffer = await page.pdf({
-      path: pdfPath,
-      width: "7cm",
-      height: "5cm",
-      printBackground: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 },
-    });
-
-    await browser.close();
-
-    console.log("PDF generated successfully");
-
-    // Print the PDF using the default printer (macOS 'lp' command)
-    exec(`lp "${pdfPath}"`, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Print error: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        console.error(`Print stderr: ${stderr}`);
-        return;
-      }
-      console.log("Print job sent:", stdout);
-    });
-
-    exec(`lp "${pdfPath}"`, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Print error: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        console.error(`Print stderr: ${stderr}`);
-        return;
-      }
-      console.log("Print job sent:", stdout);
-    });
-
-    return new Response(pdfBuffer, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${slug}.pdf"`,
+    await sheet.spreadsheets.values.update({
+      spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [["x"]],
       },
+    });
+
+    console.log("Row data for slug:", rowData);
+
+    return NextResponse.json({
+      success: true,
+      isSlugExists,
+      rowNumber,
+      rowData,
     });
   } catch (error) {
     console.log(error);
