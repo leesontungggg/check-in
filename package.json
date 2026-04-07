@@ -11,7 +11,7 @@
   "dependencies": {
     "@yudiel/react-qr-scanner": "^2.3.1",
     "googleapis": "^150.0.1",
-    "next": "15.3.3",
+    "next": "15.3.8",
     "puppeteer": "^24.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
